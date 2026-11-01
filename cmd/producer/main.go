@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/tusharsanka4/mini-asynq/internal/broker"
+	"github.com/tusharsanka4/mini-asynq/internal/task"
 )
 
 func main() {
@@ -32,4 +33,36 @@ func main() {
 	}
 
 	fmt.Println("Redis connected successfully!")
+
+	emailTask, err := task.NewTask(
+		"email:send",
+		map[string]string{
+			"to":      "bob@example.com",
+			"subject": "Hello from mini-asynq",
+			"body":    "This is our first task!",
+		},
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	encoded, err := emailTask.Serialize()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("\nSerialized task:")
+	fmt.Println(string(encoded))
+
+	decoded, err := task.Deserialize(encoded)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("\nDeserialized task:")
+	fmt.Println("ID:", decoded.ID)
+	fmt.Println("Type:", decoded.Type)
+	fmt.Println("Payload:", string(decoded.Payload))
+	fmt.Println("Created At:", decoded.CreatedAt)
+
 }
