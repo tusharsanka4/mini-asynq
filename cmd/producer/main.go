@@ -34,35 +34,46 @@ func main() {
 
 	fmt.Println("Redis connected successfully!")
 
-	emailTask, err := task.NewTask(
+	taskTypes := []string{
 		"email:send",
-		map[string]string{
-			"to":      "bob@example.com",
-			"subject": "Hello from mini-asynq",
-			"body":    "This is our first task!",
-		},
-	)
-	if err != nil {
-		log.Fatal(err)
+		"image:resize",
+		"report:generate",
 	}
 
-	encoded, err := emailTask.Serialize()
-	if err != nil {
-		log.Fatal(err)
+	// Create and enqueue three tasks.
+	for _, taskType := range taskTypes {
+		t, err := task.NewTask(
+			taskType,
+			map[string]string{
+				"message": "Hello from mini-asynq!",
+			},
+		)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if err := redisBroker.Enqueue(ctx, t); err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println("Enqueued:", t.Type, t.ID)
 	}
 
-	fmt.Println("\nSerialized task:")
-	fmt.Println(string(encoded))
+	// Retrieve the tasks in FIFO order.
+	fmt.Println("\nDequeuing tasks:")
 
-	decoded, err := task.Deserialize(encoded)
-	if err != nil {
-		log.Fatal(err)
+	for range taskTypes {
+		t, err := redisBroker.Dequeue(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if t == nil {
+			fmt.Println("Queue is empty")
+			break
+		}
+
+		fmt.Println("Dequeued:", t.Type, t.ID)
 	}
-
-	fmt.Println("\nDeserialized task:")
-	fmt.Println("ID:", decoded.ID)
-	fmt.Println("Type:", decoded.Type)
-	fmt.Println("Payload:", string(decoded.Payload))
-	fmt.Println("Created At:", decoded.CreatedAt)
 
 }
